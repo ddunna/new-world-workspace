@@ -1,0 +1,221 @@
+# Transcript Organizer Skill
+
+긴 녹음 텍스트 파일(강의, 미팅, 인터뷰)을 자동으로 분석하고 구조화된 문서로 정리하는 Claude Code Skill입니다.
+
+## 📌 주요 기능
+
+- **자동 인코딩 처리**: UTF-16, EUC-KR → UTF-8 자동 변환
+- **유형별 템플릿**: 강의/미팅/인터뷰 맞춤 템플릿
+- **경로 자동 유추**: 파일명에서 프로젝트 자동 감지
+- **완전 자동화**: Model-invoked, 사용자 질문 최소화
+
+## 🎯 사용 방법
+
+### 트리거 키워드
+
+다음 표현을 사용하면 자동으로 이 Skill이 실행됩니다:
+
+- "녹음 정리해줘"
+- "강의 정리"
+- "미팅록 만들어줘"
+- "인터뷰 정리"
+- "txt 파일 분석"
+- "트랜스크립트 정리"
+
+### 예시
+
+```
+사용자: "/Users/yourname/Downloads/인사이터 3주차_original.txt 이거 강의 정리해줘"
+
+Claude:
+1. ✅ 파일 확인
+2. ✅ UTF-16 감지 → UTF-8 변환
+3. 📋 4가지 질문:
+   - 유형: 강의
+   - 날짜: 2025-10-31
+   - 주제: Claude Code 설치 실습
+   - 저장 위치: (자동 감지) pkm/10-projects/12-education/12.04-insighter/week-03/
+4. ✅ 강의 템플릿 적용
+5. ✅ 문서 생성 및 저장
+```
+
+## 📁 폴더 구조
+
+```
+~/.claude/skills/transcript-organizer/
+├── SKILL.md                       # 메인 스킬 정의 (YAML frontmatter)
+├── README.md                      # 이 문서
+├── templates/
+│   ├── lecture-template.md        # 강의 정리 템플릿
+│   ├── meeting-template.md        # 미팅록 템플릿
+│   └── interview-template.md      # 인터뷰 템플릿
+└── utils/
+    └── encoding-detector.sh       # 인코딩 감지 및 변환
+```
+
+## 🔧 작동 원리
+
+### Phase 1: 파일 확인 및 인코딩 처리
+1. 파일 존재 확인
+2. `file -I` 명령으로 인코딩 감지
+3. UTF-16/EUC-KR → UTF-8 자동 변환 (`iconv` 사용)
+4. 변환된 파일: `/tmp/[파일명]-utf8.txt`
+
+### Phase 2: 컨텍스트 수집
+사용자에게 4가지 질문:
+- 유형 (강의/미팅/인터뷰)
+- 날짜 (YYYY-MM-DD)
+- 주제 (한 줄)
+- 저장 위치 (자동 유추 가능)
+
+### Phase 3: 파일 구조 파악
+- 화자 구분 패턴: `발화자 1 (00:00)`
+- 타임스탬프: `(00:00)`, `[00:00]`
+- 키워드 추출 및 주제 식별
+
+### Phase 4: 템플릿 적용 및 정리
+- 유형별 템플릿 선택
+- 원본 내용 보존하며 구조화
+- 중요 발언 직접 인용
+
+### Phase 5: 문서 저장
+- 파일명: `YYYY-MM-DD_[주제].md`
+- 경로 자동 결정 (프로젝트 or inbox)
+- 결과 보고
+
+## 🎨 템플릿
+
+### 1. 강의 템플릿 (lecture-template.md)
+```markdown
+# [강의명] 정리
+
+## 개요
+- 날짜, 강사, 주요 주제, 특이사항
+
+## 핵심 내용
+- 섹션별 정리 (타임스탬프 선택)
+
+## 핵심 요약
+- 주요 개념, 실습 내용, Q&A
+
+## 다음 작업
+- 후속 작업 리스트
+```
+
+### 2. 미팅 템플릿 (meeting-template.md)
+```markdown
+# [미팅명] 회의록
+
+## 개요
+- 날짜, 참석자, 안건
+
+## 논의 내용
+- 안건별 논의, 결정사항, 담당자
+
+## Action Items
+- 긴급/중요/검토 필요 구분
+
+## 다음 미팅
+- 일정, 안건, 준비사항
+```
+
+### 3. 인터뷰 템플릿 (interview-template.md)
+```markdown
+# [인터뷰 대상] 인터뷰 정리
+
+## 개요
+- 날짜, 대상, 주제
+
+## 주요 질문 및 답변
+- Q&A 형식, 인사이트 포함
+
+## 핵심 인사이트
+- 카테고리별 정리, 적용 방안
+
+## 후속 작업
+- 인사이트 적용, 추가 탐구
+```
+
+## 🚀 경로 자동 유추
+
+파일명에 다음 키워드가 있으면 자동으로 경로 설정:
+
+| 키워드 | 저장 경로 |
+|--------|-----------|
+| "인사이터" | `pkm/10-projects/12-education/12.04-insighter/` |
+| "gangneung" | `pkm/10-projects/11-consulting/11.01-gangneung-cafe-2025/` |
+| "hfk" | `pkm/10-projects/12-education/12.03-hfk/` |
+
+경로 유추 실패 시 → `pkm/00-inbox/` (임시 저장)
+
+## ⚙️ 인코딩 감지 스크립트
+
+`utils/encoding-detector.sh` 사용 방법:
+
+```bash
+~/.claude/skills/transcript-organizer/utils/encoding-detector.sh /path/to/file.txt
+```
+
+**지원 인코딩**:
+- UTF-16 (BE/LE)
+- EUC-KR
+- UTF-8 (변환 불필요, 그대로 사용)
+
+## ⚠️ 주의사항
+
+### 1. 대용량 파일
+- 110,000 토큰 이상: 청크 처리 안내
+- 샘플링으로 구조 파악 후 처리
+
+### 2. 인코딩 지원
+- UTF-16, EUC-KR: 자동 변환
+- 기타 인코딩: 수동 확인 필요
+
+### 3. 저장 위치
+- 프로젝트 경로 유추 실패 시 inbox 사용
+- 나중에 수동으로 정리 가능
+
+## 📊 실제 사용 사례
+
+### 사례 1: 인사이터 3회차 강의 (2025-10-31)
+- **원본**: `/Users/yourname/Downloads/인사이터 3주차_original.txt` (109,907 토큰)
+- **인코딩**: UTF-16 → UTF-8 변환
+- **결과**: `pkm/10-projects/12-education/12.04-insighter/week-03/인사이터_3회차_교육_정리.md` (595줄)
+- **소요 시간**: 약 5분
+
+### 기존 방식과 비교
+| 항목 | 기존 (일회용 스크립트) | Skill 방식 |
+|------|----------------------|-----------|
+| 스크립트 생성 | 매번 새로 생성 (3개) | 재사용 (1개 Skill) |
+| 일관성 | 매번 다름 | 템플릿으로 일관됨 |
+| 인코딩 처리 | 수동 | 자동 |
+| 유지보수 | 어려움 | 쉬움 |
+
+## 🔄 업데이트 이력
+
+### v1.0.0 (2025-11-01)
+- 초기 릴리스
+- 강의/미팅/인터뷰 템플릿 3종
+- UTF-16, EUC-KR 인코딩 자동 변환
+- 경로 자동 유추 기능
+- Model-invoked 자동 실행
+
+## 📚 관련 문서
+
+- [Claude Code Skills 공식 문서](https://docs.claude.com/en/docs/claude-code/skills)
+- [PKM 시스템 구조](../../../../pkm/README.md)
+- [CLAUDE.md](../../../../.claude/CLAUDE.md)
+
+## 💡 개선 계획 (Phase 2)
+
+- [ ] Telegram 메시지로 파일 전송 시 자동 처리
+- [ ] n8n 워크플로우 연동
+- [ ] Google Drive 자동 감지
+- [ ] PDF 변환 옵션
+- [ ] 다국어 지원 (영어 녹음)
+
+---
+
+**Created**: 2025-11-01
+**Author**: Claude Code + 이림
+**License**: Personal Use

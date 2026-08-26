@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.env
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Claude Code 개인 메모리/세션 데이터 (공유 저장소에 절대 포함 금지)
+.claude/projects/
+
+# 각종 스킬이 사용하는 인증 정보
+credentials.json
+token.json
+service_account.json
+*.token
+
+# 압축 해제 잔여물
+__MACOSX/
